@@ -1,3 +1,6 @@
 env/
 idx/
 en/
+
+results*
+scores*

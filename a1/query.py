@@ -13,6 +13,7 @@ import os.path
 import json
 import nltk
 from stopper import build_stopper
+from synonym import find_synonyms
 
 
 class QueryRunner(object):
@@ -55,7 +56,7 @@ class QueryRunner(object):
 
         enquire = xapian.Enquire(self.db)
         enquire.set_query(query)
-        enquire.set_cutoff(20)
+        enquire.set_cutoff(37)
 
         for match in enquire.get_mset(offset, pagesize):
             yield match
