@@ -7,11 +7,19 @@ sw_file = u'/home/hellfire/Code/infret/a1/stopwords.txt'
 
 
 import xapian
+import re
 import os
 import os.path
 from bs4 import BeautifulSoup
-
+from nltk.stem import WordNetLemmatizer
 from stopper import build_stopper
+
+# Some regular expressions used to pull specific content
+RE_INFOBOX = re.compile(r'Template:Infobox_([A-Za-z0-9_]+)', re.UNICODE)
+
+# Build a lemmatizer for keywords
+WN_LEM = WordNetLemmatizer()
+
 
 # Gets the content out of Soup
 def extract_content(soup):
@@ -34,7 +42,7 @@ def parse_wiki(root, path):
         title = bs.title.string
     else:
         title = ''
-
+    keyword = None
     # Determine the type of page
     if bs.find(name=u'wx_redirect_page_id') is not None:
         page_type = 'redirect'
@@ -47,11 +55,23 @@ def parse_wiki(root, path):
     else:
         page_type = 'content'
 
+        # Add extra context depending on the category
+        infobox = bs.find(pagename=RE_INFOBOX)
+        if infobox:
+            keyword = infobox['pagename'].split(':', 1)[1].split('_', 2)[1]
+            keyword1 = WN_LEM.lemmatize(keyword)
+            keyword2 = WN_LEM.lemmatize(keyword.lower()) # Case matters a lot...
+            keyword = keyword1 if len(keyword1) <= keyword2 else keyword2
+
+    # Remove some useless sections
+    for s in bs.findAll(attr='navbox'):
+        s.extract()
+
     content = ' '.join(extract_content(x) for x in bs.find_all('wx:section', level='1'))
     content = content.lower()
     content = content.replace('\n', ' ')
 
-    return {'type': page_type, 'title': title, 'path': unicode(rel_path), 'content': content}
+    return {'type': page_type, 'title': title, 'path': unicode(rel_path), 'content': content, 'keyword': keyword}
 
 
 
@@ -82,6 +102,7 @@ for dirpath, dirnames, filenames in os.walk(document_dir):
         count += 1
         print '{0} of {1} ({2:.2%}):'.format(count, int(file_count),
                                             count/file_count),
+
         data = parse_wiki(dirpath, path)
         print data['path']
 
@@ -95,6 +116,8 @@ for dirpath, dirnames, filenames in os.walk(document_dir):
 
             # Index each field with a prefix
             termgenerator.index_text(data['title'], 1, 'S')
+            if data['keyword']:
+                termgenerator.index_text(data['keyword'].lower(), 1, 'K')
 
             # Index the content
             termgenerator.index_text(data['title'])
