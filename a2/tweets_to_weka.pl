@@ -65,7 +65,7 @@ foreach my $set (@sets) {
                 print SET_FILE '0,';
             }
         }
-        print $tweet->{"sentiment"}."\n";
+        print SET_FILE $tweet->{"sentiment"}."\n";
     }
     close SET_FILE;
     print "DONE WRITING ".$set->{"weka_file"}."\n";
