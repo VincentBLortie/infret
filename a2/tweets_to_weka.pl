@@ -56,6 +56,8 @@ foreach my $set (@sets) {
         print SET_FILE '@ATTRIBUTE w'.$token_number.' NUMERIC\n';
         $token_number++;
     }
+    print SET_FILE '@ATTRIBUTE sentiment {positive, negative, neutral, objective}';
+    print SET_FILE "\n";
     foreach my $tweet (@{$set->{"tweets"}}) {
         my %tweet_tokens = %{$tweet->{"token_hash"}};
         foreach my $token (@token_list) {
