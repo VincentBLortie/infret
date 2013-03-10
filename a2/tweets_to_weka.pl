@@ -53,7 +53,7 @@ foreach my $set (@sets) {
     print SET_FILE '@RELATION token_rel\n';
     my $token_number = 1;
     foreach my $token (@token_list) {
-        print SET_FILE '@ATTRIBUTE w'.$token_number.' NUMERIC\n';
+        print SET_FILE '@ATTRIBUTE w'.$token_number." NUMERIC\n";
         $token_number++;
     }
     print SET_FILE '@ATTRIBUTE sentiment {positive, negative, neutral, objective}';
