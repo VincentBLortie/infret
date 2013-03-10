@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
 use strict;
 use diagnostics;
+$|++;
 
 # Check if number of arguments is valid
 if (($#ARGV + 1) % 2 != 0) {
