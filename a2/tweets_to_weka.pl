@@ -57,7 +57,12 @@ foreach my $set (@sets) {
 
 # Ordered list of tokens. This order will be used in the arff files for the features
 # TODO: Filter this list intelligently
-my @token_list = sort (keys %all_tokens);
+my @token_list = ();
+foreach my $candidate_token (sort (keys %all_tokens)) {
+    if ($all_tokens{$candidate_token} > 1) {
+        push @token_list, $candidate_token; 
+    }
+}
 
 # Write the arff files
 foreach my $set (@sets) {
