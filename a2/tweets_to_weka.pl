@@ -68,7 +68,7 @@ foreach my $candidate_token (sort (keys %all_tokens)) {
 foreach my $set (@sets) {
     print "WRITING ".$set->{"weka_file"}."\n";
     open SET_FILE, ">".$set->{"weka_file"} or die "Could not open file '".$set->{"weka_file"}."': $!\n";
-    print SET_FILE '@RELATION token_rel\n';
+    print SET_FILE "\@RELATION token_rel\n\n";
     # For the feature list, give each token a number and name it w# where # is that number
     my $token_number = 1;
     # Print the list of attributes
@@ -76,8 +76,8 @@ foreach my $set (@sets) {
         print SET_FILE "\@ATTRIBUTE w$token_number NUMERIC\n";
         $token_number++;
     }
-    print SET_FILE '@ATTRIBUTE sentiment {positive, negative, neutral, objective}';
-    print SET_FILE "\n";
+    print SET_FILE "\@ATTRIBUTE sentiment {positive, negative, neutral, objective}\n\n";
+    print SET_FILE "\@data\n";
     # Write all the tweets as comma-separated feature values
     foreach my $tweet (@{$set->{"tweets"}}) {
         my %tweet_tokens = %{$tweet->{"token_hash"}};
@@ -88,8 +88,9 @@ foreach my $set (@sets) {
             if (exists($tweet_tokens{$token})) {
                 print SET_FILE "$t_i $tweet_tokens{$token}, ";
             }
+            $t_i++;
         }
-        print SET_FILE $tweet->{"sentiment"}."}\n";
+        print SET_FILE $t_i." ".$tweet->{"sentiment"}."}\n";
     }
     close SET_FILE;
     print "DONE WRITING ".$set->{"weka_file"}."\n";
