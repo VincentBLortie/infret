@@ -68,7 +68,7 @@ foreach my $set (@sets) {
     my $token_number = 1;
     # Print the list of attributes
     foreach my $token (@token_list) {
-        print SET_FILE '@ATTRIBUTE w'.$token_number." NUMERIC\n";
+        print SET_FILE "\@ATTRIBUTE w$token_number NUMERIC\n";
         $token_number++;
     }
     print SET_FILE '@ATTRIBUTE sentiment {positive, negative, neutral, objective}';
@@ -77,14 +77,14 @@ foreach my $set (@sets) {
     foreach my $tweet (@{$set->{"tweets"}}) {
         my %tweet_tokens = %{$tweet->{"token_hash"}};
         # Essentially, for each feature...
+        print SET_FILE "{";
+        my $t_i = 0;
         foreach my $token (@token_list) {
             if (exists($tweet_tokens{$token})) {
-                print SET_FILE $tweet_tokens{$token}.',';
-            } else {
-                print SET_FILE '0,';
+                print SET_FILE "$t_i $tweet_tokens{$token}, ";
             }
         }
-        print SET_FILE $tweet->{"sentiment"}."\n";
+        print SET_FILE $tweet->{"sentiment"}."}\n";
     }
     close SET_FILE;
     print "DONE WRITING ".$set->{"weka_file"}."\n";
