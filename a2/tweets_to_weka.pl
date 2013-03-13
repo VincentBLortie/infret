@@ -24,6 +24,10 @@ my %all_tokens = ();
 
 # Read each set and its tweets and store all of that info in a hash
 foreach my $set (@sets) {
+    # Record statistics about each set in a hash
+    my %statistics = ("all" => 0, "positive" => 0, "negative" => 0, "neutral" => 0, "objective" => 0);
+    $set->{"statistics"} = \%statistics;
+
     print "READING ".$set->{"tweets_file"}."\n";
     my @tweets = ();
     $set->{"tweets"} = \@tweets;
@@ -38,6 +42,8 @@ foreach my $set (@sets) {
             $tweet{"sid"} = $1;
             $tweet{"uid"} = $2;
             $tweet{"sentiment"} = $3;
+            $statistics{$tweet{"sentiment"}}++;
+            $statistics{"all"}++;
             $tweet{"text"} = $4;
             # Extract the tokens and put them in a hash table for quick and easy exists() checks
             my @tweet_tokens = &extract_tokens($tweet{"text"});
@@ -54,6 +60,26 @@ foreach my $set (@sets) {
     close SET_FILE;
     print "DONE READING ".$set->{"tweets_file"}."\n";
 }
+
+print "\n";
+
+# Print out statistics for each set and record the class with the least amount of tweets
+foreach my $set (@sets) {
+    print "STATISTICS FOR '".$set->{"tweets_file"}." -> ".$set->{"weka_file"}."'\n";
+    my $min_class = "all";
+    if ($set->{"statistics"}->{"all"} > 0) {
+        foreach my $sentiment (keys %{$set->{"statistics"}}) {
+            if ($set->{"statistics"}->{$sentiment} < $set->{"statistics"}->{$min_class}) {
+                $min_class = $sentiment;
+            }
+            print "'$sentiment': ".$set->{"statistics"}->{$sentiment}." (".sprintf("%.2f", (100.0 * $set->{"statistics"}->{$sentiment} / $set->{"statistics"}->{"all"})).")\n";
+        } 
+        print "minimum: $min_class\n";
+    }
+    $set->{"statistics"}->{"min"} = $set->{"statistics"}->{$min_class};
+    print "\n";
+}
+
 
 # Ordered list of tokens. This order will be used in the arff files for the features
 # TODO: Filter this list intelligently
