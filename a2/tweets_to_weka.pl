@@ -3,6 +3,10 @@ use strict;
 use diagnostics;
 $|++;
 
+# 1: Sentiment classes will be balanced to have the same number of entries in the output file (extra entries for larger classes will be ignored)
+# 0: No balancing of sentiment classes
+my $balance_classes = 1;
+
 # Check if number of arguments is valid
 if (($#ARGV + 1) % 2 != 0) {
     print "Correct usage: tweets_to_weka.pl [tweets_file weka_file]+\n";
@@ -72,9 +76,14 @@ foreach my $set (@sets) {
             if ($set->{"statistics"}->{$sentiment} < $set->{"statistics"}->{$min_class}) {
                 $min_class = $sentiment;
             }
-            print "'$sentiment': ".$set->{"statistics"}->{$sentiment}." (".sprintf("%.2f", (100.0 * $set->{"statistics"}->{$sentiment} / $set->{"statistics"}->{"all"})).")\n";
+            print "'$sentiment': ".$set->{"statistics"}->{$sentiment}." (".sprintf("%.2f", (100.0 * $set->{"statistics"}->{$sentiment} / $set->{"statistics"}->{"all"}))."%)\n";
         } 
         print "minimum: $min_class\n";
+        if ($balance_classes) {
+            print "balanced total number of entries: " . (4*$set->{"statistics"}->{$min_class}) . " (" . sprintf("%.2f", (100.0 - (400.0*$set->{"statistics"}->{$min_class}/$set->{"statistics"}->{"all"}))) . "% loss)\n";
+        } else {
+            print "no balancing performed (all entries will be used)\n";
+        }
     }
     $set->{"statistics"}->{"min"} = $set->{"statistics"}->{$min_class};
     print "\n";
@@ -92,6 +101,16 @@ foreach my $candidate_token (sort (keys %all_tokens)) {
 
 # Write the arff files
 foreach my $set (@sets) {
+    # Keep up a count of the number of entries written in each sentiment class
+    my %written_count = ("positive" => 0, "negative" => 0, "neutral" => 0, "objective" => 0);
+
+    my $tweet_count = 0;
+    if ($balance_classes) {
+        $tweet_count = $set->{"statistics"}->{"min"} * 4; 
+    } else {
+        $tweet_count = $set->{"statistics"}->{"all"}; 
+    }
+
     print "WRITING ".$set->{"weka_file"}."\n";
     open SET_FILE, ">".$set->{"weka_file"} or die "Could not open file '".$set->{"weka_file"}."': $!\n";
     print SET_FILE "\@RELATION token_rel\n\n";
@@ -104,22 +123,31 @@ foreach my $set (@sets) {
     }
     print SET_FILE "\@ATTRIBUTE sentiment {positive, negative, neutral, objective}\n\n";
     print SET_FILE "\@data\n";
+
+    my $tweet_number = 0;
+    print sprintf("%2d", (100.0 * $tweet_number / $tweet_count))."%";
+
     # Write all the tweets as comma-separated feature values
     foreach my $tweet (@{$set->{"tweets"}}) {
         my %tweet_tokens = %{$tweet->{"token_hash"}};
-        # Essentially, for each feature...
-        print SET_FILE "{";
-        my $t_i = 0;
-        foreach my $token (@token_list) {
-            if (exists($tweet_tokens{$token})) {
-                print SET_FILE "$t_i $tweet_tokens{$token}, ";
+        # Only print the tweet if we haven't exceeded the limit for this tweet's sentiment or if we are not balancing sentiment classes
+        if ($written_count{$tweet->{"sentiment"}} < $set->{"statistics"}->{"min"} or !$balance_classes) {
+            print SET_FILE "{";
+            my $t_i = 0;
+            foreach my $token (@token_list) {
+                if (exists($tweet_tokens{$token})) {
+                    print SET_FILE "$t_i $tweet_tokens{$token}, ";
+                }
+                $t_i++;
             }
-            $t_i++;
+            print SET_FILE $t_i." ".$tweet->{"sentiment"}."}\n";
+            $written_count{$tweet->{"sentiment"}}++;
+            $tweet_number++;
+            print "\r".sprintf("%2d", (100.0 * $tweet_number / $tweet_count))."%";
         }
-        print SET_FILE $t_i." ".$tweet->{"sentiment"}."}\n";
     }
     close SET_FILE;
-    print "DONE WRITING ".$set->{"weka_file"}."\n";
+    print "\rDONE WRITING ".$set->{"weka_file"}."\n";
 }
 
 sub extract_tokens() {
