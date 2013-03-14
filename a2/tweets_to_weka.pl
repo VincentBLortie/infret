@@ -78,8 +78,12 @@ foreach my $set (@sets) {
 
 print "\n";
 
+# Total number of tweets across all classes
+my $total = 0;
+
 # Print out statistics for each set and record the class with the least amount of tweets
 foreach my $set (@sets) {
+    $total += $set->{"statistics"}->{"all"};
     print "STATISTICS FOR '".$set->{"tweets_file"}." -> ".$set->{"weka_file"}."'\n";
     my $min_class = "all";
     if ($set->{"statistics"}->{"all"} > 0) {
@@ -100,7 +104,8 @@ foreach my $set (@sets) {
     print "\n";
 }
 
-print "$not_available_counter tweets were 'Not Available'\n\n";
+$total += $not_available_counter;
+print "$not_available_counter tweets were 'Not Available' (".sprintf("%.2f", (100.0 * $not_available_counter / $total))."%)\n\n";
 
 
 # Ordered list of tokens. This order will be used in the arff files for the features
