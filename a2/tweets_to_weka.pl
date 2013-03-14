@@ -7,6 +7,11 @@ $|++;
 # 0: No balancing of sentiment classes
 my $balance_classes = 1;
 
+# Flag that triggers skipping 'Not Available' tweets
+my $skip_not_available = 1;
+# Number of 'Not Available' tweets found
+my $not_available_counter = 0;
+
 # Check if number of arguments is valid
 if (($#ARGV + 1) % 2 != 0) {
     print "Correct usage: tweets_to_weka.pl [tweets_file weka_file]+\n";
@@ -40,6 +45,12 @@ foreach my $set (@sets) {
         chomp;
         # The following regex splits the entry into sid, uid, sentiment and tweet text
         if (m/^([0-9]+)\t([0-9]+)\t\"(positive|negative|neutral|objective)\"\t(.*)$/) {
+            if ($4 eq "Not Available") {
+                $not_available_counter++; 
+                if ($skip_not_available) {
+                    next;
+                }
+            }
             my %tweet = ();
             push @tweets, \%tweet;
 
@@ -88,6 +99,8 @@ foreach my $set (@sets) {
     $set->{"statistics"}->{"min"} = $set->{"statistics"}->{$min_class};
     print "\n";
 }
+
+print "$not_available_counter tweets were 'Not Available'\n\n";
 
 
 # Ordered list of tokens. This order will be used in the arff files for the features
