@@ -3,30 +3,17 @@ use strict;
 use diagnostics;
 $|++;
 
-# 1: Sentiment classes will be balanced to have the same number of entries in the output file (extra entries for larger classes will be ignored)
-# 0: No balancing of sentiment classes
-my $balance_classes = 1;
-
-# Flag that triggers skipping 'Not Available' tweets
-my $skip_not_available = 1;
-# Number of 'Not Available' tweets found
-my $not_available_counter = 0;
-
 # Check if number of arguments is valid
 if (($#ARGV + 1) % 2 != 0) {
     print "Correct usage: tweets_to_weka.pl [tweets_file weka_file]+\n";
     die;
 }
 
-# Read every pair of arguments and store them as an element of the @sets array
-# These pair specify two filenames for, respetively, the input tweet entry file and the output .arff weka file
 my @sets = ();
-while (@ARGV) {
-    my %set = ();
-    $set{"tweets_file"} = shift(@ARGV);
-    $set{"weka_file"} = shift(@ARGV);
-    push @sets, \%set;
-}
+my %train = ("tweets_file" => "train", "weka_file" => "train.arff", "balance_classes" => 1, "skip_na" => 1, "na_count" => 0);
+my %test = ("tweets_file" => "test", "weka_file" => "test.arff", "balance_classes" => 0, "skip_na" => 0, "na_count" => 0);
+push @sets, \%train;
+push @sets, \%test;
 
 # Count of the tokens found across all sets
 my %all_tokens = ();
@@ -46,8 +33,8 @@ foreach my $set (@sets) {
         # The following regex splits the entry into sid, uid, sentiment and tweet text
         if (m/^([0-9]+)\t([0-9]+)\t\"(positive|negative|neutral|objective)\"\t(.*)$/) {
             if ($4 eq "Not Available") {
-                $not_available_counter++; 
-                if ($skip_not_available) {
+                $set->{"na_count"}++;
+                if ($set->{"skip_na"}) {
                     next;
                 }
             }
@@ -78,12 +65,8 @@ foreach my $set (@sets) {
 
 print "\n";
 
-# Total number of tweets across all classes
-my $total = 0;
-
 # Print out statistics for each set and record the class with the least amount of tweets
 foreach my $set (@sets) {
-    $total += $set->{"statistics"}->{"all"};
     print "STATISTICS FOR '".$set->{"tweets_file"}." -> ".$set->{"weka_file"}."'\n";
     my $min_class = "all";
     if ($set->{"statistics"}->{"all"} > 0) {
@@ -94,19 +77,23 @@ foreach my $set (@sets) {
             print "'$sentiment': ".$set->{"statistics"}->{$sentiment}." (".sprintf("%.2f", (100.0 * $set->{"statistics"}->{$sentiment} / $set->{"statistics"}->{"all"}))."%)\n";
         } 
         print "minimum: $min_class\n";
-        if ($balance_classes) {
+        if ($set->{"balance_classes"}) {
             print "balanced total number of entries: " . (4*$set->{"statistics"}->{$min_class}) . " (" . sprintf("%.2f", (100.0 - (400.0*$set->{"statistics"}->{$min_class}/$set->{"statistics"}->{"all"}))) . "% loss)\n";
         } else {
             print "no balancing performed (all entries will be used)\n";
         }
     }
+
+    my $total = $set->{"statistics"}->{"all"};
+    if ($set->{"skip_na"}) {
+        print "Removed 'Not Available' tweets\n";
+        $total += $set->{"na_count"};
+    }
+    print "$set->{'na_count'} tweets were 'Not Available' (".sprintf("%.2f", (100.0 * $set->{"na_count"} / $total))."%)\n";
+    
     $set->{"statistics"}->{"min"} = $set->{"statistics"}->{$min_class};
     print "\n";
 }
-
-$total += $not_available_counter;
-print "$not_available_counter tweets were 'Not Available' (".sprintf("%.2f", (100.0 * $not_available_counter / $total))."%)\n\n";
-
 
 # Ordered list of tokens. This order will be used in the arff files for the features
 # TODO: Filter this list intelligently
@@ -123,7 +110,7 @@ foreach my $set (@sets) {
     my %written_count = ("positive" => 0, "negative" => 0, "neutral" => 0, "objective" => 0);
 
     my $tweet_count = 0;
-    if ($balance_classes) {
+    if ($set->{"balance_classes"}) {
         $tweet_count = $set->{"statistics"}->{"min"} * 4; 
     } else {
         $tweet_count = $set->{"statistics"}->{"all"}; 
@@ -149,7 +136,7 @@ foreach my $set (@sets) {
     foreach my $tweet (@{$set->{"tweets"}}) {
         my %tweet_tokens = %{$tweet->{"token_hash"}};
         # Only print the tweet if we haven't exceeded the limit for this tweet's sentiment or if we are not balancing sentiment classes
-        if ($written_count{$tweet->{"sentiment"}} < $set->{"statistics"}->{"min"} or !$balance_classes) {
+        if ($written_count{$tweet->{"sentiment"}} < $set->{"statistics"}->{"min"} or !$set->{"balance_classes"}) {
             print SET_FILE "{";
             my $t_i = 0;
             foreach my $token (@token_list) {
