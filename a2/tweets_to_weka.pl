@@ -10,8 +10,8 @@ if (($#ARGV + 1) % 2 != 0) {
 }
 
 my @sets = ();
-my %train = ("tweets_file" => "train", "weka_file" => "train.arff", "balance_classes" => 1, "skip_na" => 1, "na_count" => 0);
-my %test = ("tweets_file" => "test", "weka_file" => "test.arff", "balance_classes" => 0, "skip_na" => 0, "na_count" => 0);
+my %train = ("tweets_file" => "train", "weka_file" => "train.arff", "balance_classes" => 1, "skip_na" => 1, "na_count" => 0, "normalize" => 1);
+my %test = ("tweets_file" => "test", "weka_file" => "test.arff", "balance_classes" => 0, "skip_na" => 0, "na_count" => 0, "normalize" => 1);
 push @sets, \%train;
 push @sets, \%test;
 
@@ -141,7 +141,11 @@ foreach my $set (@sets) {
             my $t_i = 0;
             foreach my $token (@token_list) {
                 if (exists($tweet_tokens{$token})) {
-                    print SET_FILE "$t_i $tweet_tokens{$token}, ";
+                    my $count = $tweet_tokens{$token};
+                    if ($set->{"normalize"}) {
+                        $count /= scalar(keys %tweet_tokens);
+                    }
+                    print SET_FILE "$t_i $count, ";
                 }
                 $t_i++;
             }
